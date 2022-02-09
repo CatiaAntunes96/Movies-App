@@ -1,17 +1,16 @@
 import axios from "axios";
-import React, { useEffect, useState, useReducer } from "react";
+import React, { useEffect, useReducer } from "react";
 import { ActivityIndicator, View } from "react-native";
 
-import { urlSearch } from "../constants";
 import InitialPageLayout from "./initial-page-layout";
 
-const initialState = { loading: false, results: null, error: null };
-
 const ACTIONS = {
-  FETCH_API: "call-api",
+  CALL_API: "call-api",
   SUCCESS: "success",
   ERROR: "error",
 };
+
+const initialState = { loading: false, results: null, error: null };
 
 function reducer(state, action) {
   switch (action.type) {
@@ -30,19 +29,16 @@ function reducer(state, action) {
   }
 }
 
-const SearchResults = ({ route }) => {
-  const { itemSearch } = route.params;
-
+const TabNavigatorPage = ({ url }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const { results, loading, error } = state;
 
   useEffect(() => {
     dispatch({ type: ACTIONS.FETCH_API });
     const getResults = async () => {
-      let response = await axios.get(urlSearch + itemSearch);
+      let response = await axios.get(url);
       if (response.status == 200) {
-        const descriptor = Object.getOwnPropertyDescriptor(response, "data");
-        dispatch({ type: ACTIONS.SUCCESS, data: descriptor.value.results });
+        dispatch({ type: ACTIONS.SUCCESS, data: response.data.items });
         return;
       }
       dispatch({ type: ACTIONS.ERROR, error: response.error });
@@ -82,4 +78,4 @@ const SearchResults = ({ route }) => {
   );
 };
 
-export default SearchResults;
+export default TabNavigatorPage;

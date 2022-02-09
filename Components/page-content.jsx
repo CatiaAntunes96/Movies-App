@@ -1,28 +1,95 @@
 import axios from "axios";
-import React, { useEffect, useState } from "react";
-import { FlatList, View, Text, StyleSheet } from "react-native";
+import React, { useEffect, useReducer } from "react";
+import {
+  FlatList,
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+} from "react-native";
 import { Image } from "react-native-elements";
 import { Entypo } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+
 import { urlTitle } from "../constants";
 
+const ACTIONS = {
+  FETCH_API: "call-api",
+  SUCCESS: "success",
+  ERROR: "error",
+};
+
+const initialState = {
+  loading: false,
+  results: null,
+  genreResults: null,
+  error: null,
+};
+
+function reducer(state, action) {
+  switch (action.type) {
+    case ACTIONS.FETCH_API:
+      return { loading: true };
+    case ACTIONS.SUCCESS:
+      return {
+        loading: false,
+        results: action.data,
+        genreResults: action.genres,
+      };
+    case ACTIONS.ERROR:
+      return {
+        loading: false,
+        error: action.error,
+      };
+  }
+}
+
 const ContentPage = ({ route }) => {
-  const [data, setData] = useState([]);
-  const [genres, setGenres] = useState([]);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { results, genreResults, loading, error } = state;
   const { itemId } = route.params;
 
   useEffect(() => {
-    axios.get(urlTitle + itemId).then((response) => {
-      setData(response.data);
-      setGenres(response.data.genreList);
-    });
+    dispatch({ type: ACTIONS.FETCH_API });
+    const getResults = async () => {
+      let response = await axios.get(urlTitle + itemId);
+      if (response.status == 200) {
+        dispatch({
+          type: ACTIONS.SUCCESS,
+          data: response.data,
+          genres: response.data.genreList,
+        });
+
+        return;
+      }
+      dispatch({ type: ACTIONS.ERROR, error: response.error });
+    };
+
+    getResults();
   }, []);
 
-  // useEffect(() => {
-  //   const data = require("../apis/title-api.json");
-  //   setData(data);
-  //   setGenres(data.genreList);
-  // }, []);
+  if (loading) {
+    return (
+      <View style={{ justifyContent: "center", marginVertical: 200 }}>
+        <ActivityIndicator size="large" color="#F7A072" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View
+        style={{
+          marginVertical: 200,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ fontSize: 18 }}>
+          Error fetching data... Check your network connection!
+        </Text>
+      </View>
+    );
+  }
 
   const information = () => {
     return (
@@ -40,29 +107,30 @@ const ContentPage = ({ route }) => {
               fontWeight: "bold",
               fontSize: 25,
               marginBottom: 20,
+              textAlign: "center",
             }}
           >
-            {data.fullTitle}
+            {results.fullTitle}
           </Text>
 
           <Image
             source={{
-              uri: data.image,
+              uri: results.image,
             }}
             style={styles.coverImage}
           />
           <View style={styles.container}>
-            <Text>{data.type}</Text>
+            <Text>{results.type}</Text>
             <Entypo name="dot-single" size={15} color="black" />
-            <Text>{data.year}</Text>
+            <Text>{results.year}</Text>
             <Entypo name="dot-single" size={15} color="black" />
-            <Text>{data.runtimeStr}</Text>
+            <Text>{results.runtimeStr}</Text>
             <Entypo name="dot-single" size={15} color="black" />
-            <Text>{data.contentRating}</Text>
+            <Text>{results.contentRating}</Text>
           </View>
 
           <View style={styles.containerGenres}>
-            {genres?.map((item, i) => {
+            {genreResults?.map((item, i) => {
               return (
                 <Text style={styles.genreText} key={i}>
                   {item.value}
@@ -72,27 +140,32 @@ const ContentPage = ({ route }) => {
           </View>
         </View>
 
-        <View style={styles.container}>
+        <View
+          style={{
+            flexDirection: "row",
+            textAlign: "justify",
+            marginVertical: 5,
+            marginHorizontal: 15,
+            flexShrink: 1,
+          }}
+        >
           <Text style={styles.labelText}>Original Title: </Text>
-          <Text style={styles.descriptorText}>{data.originalTitle}</Text>
+          <Text style={(styles.descriptorText, { flexShrink: 1 })}>
+            {results.originalTitle}
+          </Text>
         </View>
 
         <View style={styles.container}>
           <Text style={styles.labelText}>Imdb rating:</Text>
           <View style={{ alignItems: "center", flexDirection: "row" }}>
-            <Text style={styles.descriptorText}> {data.imDbRating}</Text>
+            <Text style={styles.descriptorText}> {results.imDbRating}</Text>
             <Entypo name="star" size={15} color="#FFC75F" />
           </View>
         </View>
 
         <View style={{ marginHorizontal: 10, marginVertical: 3 }}>
           <Text style={styles.labelText}>Plot:</Text>
-          <Text style={styles.baseText}>{data.plot}</Text>
-        </View>
-
-        <View style={styles.container}>
-          <Text style={styles.labelText}>Director: </Text>
-          <Text style={styles.descriptorText}>{data.directors}</Text>
+          <Text style={styles.baseText}>{results.plot}</Text>
         </View>
 
         <View style={styles.container}>
@@ -102,33 +175,41 @@ const ContentPage = ({ route }) => {
     );
   };
 
+  const EmptyList = () => {
+    return <View></View>;
+  };
+
   return (
     <View style={{ marginBottom: 20 }}>
-      <FlatList
-        data={data.actorList}
-        ListHeaderComponent={information}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              flex: 1,
-              marginHorizontal: 20,
-            }}
-          >
-            <View style={styles.listItem}>
-              <Image
-                source={{
-                  uri: item.image,
-                }}
-                style={styles.actorsImage}
-              />
-              <Text style={styles.listItemText}>
-                {item.name} as {item.asCharacter}
-              </Text>
+      {results != null ? (
+        <FlatList
+          data={results.actorList}
+          ListHeaderComponent={information}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View
+              style={{
+                flex: 1,
+                marginHorizontal: 20,
+              }}
+            >
+              <View style={styles.listItem}>
+                <Image
+                  source={{
+                    uri: item.image,
+                  }}
+                  style={styles.actorsImage}
+                />
+                <Text style={styles.listItemText}>
+                  {item.name} as {item.asCharacter}
+                </Text>
+              </View>
             </View>
-          </View>
-        )}
-      />
+          )}
+        />
+      ) : (
+        <EmptyList />
+      )}
     </View>
   );
 };
@@ -142,8 +223,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "baseline",
-    marginVertical: 3,
-    marginHorizontal: 10,
+    marginVertical: 5,
+    marginHorizontal: 15,
   },
   containerGenres: {
     flexDirection: "row",
@@ -181,7 +262,7 @@ const styles = StyleSheet.create({
   },
   actorsImage: {
     width: 100,
-    height: 100,
+    height: 130,
     borderRadius: 8,
   },
 });

@@ -1,22 +1,12 @@
-import axios from "axios";
-import React, { useRef, useState } from "react";
-import { urlSearch } from "../constants";
-import {
-  SafeAreaView,
-  StyleSheet,
-  FlatList,
-  View,
-  ActivityIndicator,
-  Image,
-} from "react-native";
+import React, { useState } from "react";
+
+import { StyleSheet, View } from "react-native";
 import { SearchBar } from "react-native-elements";
 import { useNavigation } from "@react-navigation/native";
 
 const SearchComponent = () => {
   const navigation = useNavigation();
   const [search, setSearch] = useState("");
-
-  const [error, setError] = useState(null);
 
   const fetchInformation = () => {
     navigation.navigate("Results", { itemSearch: search });
@@ -32,7 +22,7 @@ const SearchComponent = () => {
       <SearchBar
         placeholder="Search here..."
         onChangeText={updateSearch}
-        style={{ fontSize: 18 }}
+        style={{ fontSize: 15 }}
         value={search}
         onSubmitEditing={fetchInformation}
         platform={"android"}
